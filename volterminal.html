@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOLTERMINAL — Deriv Synthetics & Options Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E13;
+    --panel:#10161D;
+    --panel-2:#141B23;
+    --border:#212B36;
+    --text:#E7EEF4;
+    --muted:#7C8A99;
+    --dim:#4C5A68;
+    --green:#00D9A3;
+    --red:#FF4D6D;
+    --amber:#FFB020;
+    --blue:#4C9EFF;
+    --mono:'JetBrains Mono', monospace;
+    --disp:'Space Grotesk', sans-serif;
+    --body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--green);color:#000;}
+  input,select,button{font-family:inherit;color:inherit;}
+
+  /* ---------- layout ---------- */
+  .shell{display:flex;flex-direction:column;min-height:100vh;}
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#0D1319,#0A0E13);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:30px;height:30px;border-radius:7px;
+    background:conic-gradient(from 220deg,var(--green),var(--blue),var(--green));
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--disp);font-weight:700;font-size:14px;color:#04120C;
+  }
+  .brand h1{font-family:var(--disp);font-size:17px;letter-spacing:.5px;font-weight:700;}
+  .brand span{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;display:block;}
+  .conn-badge{
+    display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;
+    padding:6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--panel);
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);}
+  .dot.live{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.6s infinite;}
+  .dot.err{background:var(--red);box-shadow:0 0 8px var(--red);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .acct{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .acct b{color:var(--text);font-size:13px;}
+
+  main{flex:1;display:grid;grid-template-columns:320px 1fr;gap:1px;background:var(--border);}
+  @media (max-width:900px){ main{grid-template-columns:1fr;} }
+
+  .sidebar{background:var(--panel);padding:18px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;}
+  .content{background:var(--bg);padding:18px;display:flex;flex-direction:column;gap:16px;}
+
+  .card{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+  .card h3{
+    font-family:var(--disp);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;
+  }
+  .card h3::before{content:"";width:3px;height:12px;background:var(--green);border-radius:2px;}
+
+  label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;margin-top:10px;font-family:var(--mono);letter-spacing:.3px;}
+  label:first-child{margin-top:0;}
+  input[type=text],input[type=password],input[type=number],select{
+    width:100%;background:#0B1015;border:1px solid var(--border);border-radius:6px;
+    padding:9px 10px;font-size:13px;font-family:var(--mono);color:var(--text);
+    outline:none;transition:border-color .15s;
+  }
+  input:focus,select:focus{border-color:var(--green);}
+  select{cursor:pointer;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+  .btn{
+    width:100%;padding:10px 14px;border-radius:6px;border:none;cursor:pointer;
+    font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.3px;
+    transition:filter .15s, transform .1s;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-primary{background:var(--green);color:#04120C;}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.1);}
+  .btn-danger{background:transparent;border:1px solid var(--red);color:var(--red);}
+  .btn-danger:hover:not(:disabled){background:rgba(255,77,109,.1);}
+  .btn-buy{background:var(--green);color:#04120C;}
+  .btn-sell{background:var(--red);color:#1a0006;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+
+  .hint{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5;}
+  .hint a{color:var(--blue);text-decoration:none;}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;}
+  .toggle-row span{font-size:12px;color:var(--text);}
+  .switch{position:relative;width:38px;height:20px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:.2s;}
+  .slider::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:.2s;}
+  input:checked + .slider{background:rgba(0,217,163,.25);}
+  input:checked + .slider::before{transform:translateX(18px);background:var(--green);}
+
+  .warn-box{
+    background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.35);
+    border-radius:8px;padding:10px 12px;font-size:11.5px;color:#F2C773;line-height:1.6;
+  }
+
+  /* ---------- price / signal panel ---------- */
+  .price-panel{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+  @media (max-width:1100px){.price-panel{grid-template-columns:1fr;}}
+  .price-main{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;}
+  .price-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .symbol-name{font-family:var(--disp);font-size:15px;font-weight:600;}
+  .symbol-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:2px;}
+  .price-value{font-family:var(--mono);font-size:44px;font-weight:600;margin-top:6px;letter-spacing:-1px;}
+  .price-value.up{color:var(--green);}
+  .price-value.down{color:var(--red);}
+  canvas#spark{width:100%;height:90px;display:block;margin-top:10px;}
+
+  .signal-box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;display:flex;flex-direction:column;}
+  .signal-badge{
+    align-self:flex-start;font-family:var(--disp);font-weight:700;font-size:20px;
+    padding:6px 16px;border-radius:6px;letter-spacing:1px;margin-bottom:12px;
+  }
+  .signal-badge.BUY{background:rgba(0,217,163,.15);color:var(--green);border:1px solid var(--green);}
+  .signal-badge.SELL{background:rgba(255,77,109,.15);color:var(--red);border:1px solid var(--red);}
+  .signal-badge.HOLD{background:rgba(124,138,153,.12);color:var(--muted);border:1px solid var(--border);}
+  .sig-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-family:var(--mono);font-size:11px;}
+  .sig-metrics div{background:#0B1015;border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+  .sig-metrics .k{color:var(--muted);display:block;font-size:10px;margin-bottom:3px;}
+  .sig-metrics .v{font-size:14px;color:var(--text);font-weight:600;}
+  .sig-note{font-size:11px;color:var(--dim);margin-top:12px;line-height:1.6;}
+
+  /* ---------- trade panel ---------- */
+  .trade-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;}
+
+  /* ---------- tables ---------- */
+  .table-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 0;}
+  .table-card h3{padding:0 16px;}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
+  th{text-align:left;color:var(--dim);font-weight:500;padding:8px 16px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+  td{padding:9px 16px;border-bottom:1px solid rgba(33,43,54,.5);color:var(--text);}
+  tr:last-child td{border-bottom:none;}
+  .pl-pos{color:var(--green);}
+  .pl-neg{color:var(--red);}
+  .tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;}
+  .tag.CALL,.tag.DIGITEVEN{background:rgba(0,217,163,.15);color:var(--green);}
+  .tag.PUT,.tag.DIGITODD{background:rgba(255,77,109,.15);color:var(--red);}
+  .empty{padding:20px 16px;color:var(--dim);font-size:12px;text-align:center;}
+
+  .log{
+    font-family:var(--mono);font-size:11px;color:var(--muted);max-height:130px;overflow-y:auto;
+    display:flex;flex-direction:column-reverse;gap:4px;
+  }
+  .log div{border-left:2px solid var(--border);padding-left:8px;}
+  .log .e{color:var(--red);border-color:var(--red);}
+  .log .s{color:var(--green);border-color:var(--green);}
+
+  footer{padding:14px 22px;border-top:1px solid var(--border);font-size:11px;color:var(--dim);text-align:center;line-height:1.7;}
+  footer b{color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="brand">
+      <div class="mark">V</div>
+      <div>
+        <h1>VOLTERMINAL</h1>
+        <span>SYNTHETICS &amp; OPTIONS SIGNAL BOT</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="acct" id="acctInfo">Not connected</div>
+      <div class="conn-badge"><div class="dot" id="connDot"></div><span id="connText">OFFLINE</span></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+      <div class="card">
+        <h3>Connection</h3>
+        <label>App ID</label>
+        <input type="text" id="appId" value="33HYfoZqYCyzF0COTtkS0">
+        <label>API Token (PAT)</label>
+        <input type="password" id="token" placeholder="Paste your Deriv API token">
+        <div class="hint">
+          Generate a token at your Deriv account's API Token page with the
+          <b style="color:var(--muted)">Read</b> and <b style="color:var(--muted)">Trade</b> scopes enabled
+          (add <b style="color:var(--muted)">Trading information</b> too if you want portfolio/history insight).
+          The token is only used from your browser to authorize this WebSocket session — it is never sent anywhere else.
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn btn-primary" id="connectBtn">Connect</button>
+          <button class="btn btn-danger" id="disconnectBtn" style="display:none;">Disconnect</button>
+        </div>
+        <div class="warn-box" style="margin-top:12px;">
+          Trading synthetic indices and options carries a high risk of rapid loss. Start on a demo (virtual) token, use small stakes, and never trade money you can't afford to lose.
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Market</h3>
+        <label>Symbol</label>
+        <select id="symbolSelect">
+          <optgroup label="Volatility Indices">
+            <option value="R_10">Volatility 10 Index</option>
+            <option value="R_25">Volatility 25 Index</option>
+            <option value="R_50" selected>Volatility 50 Index</option>
+            <option value="R_75">Volatility 75 Index</option>
+            <option value="R_100">Volatility 100 Index</option>
+          </optgroup>
+          <optgroup label="Volatility (1s) Indices">
+            <option value="1HZ10V">Volatility 10 (1s) Index</option>
+            <option value="1HZ25V">Volatility 25 (1s) Index</option>
+            <option value="1HZ50V">Volatility 50 (1s) Index</option>
+            <option value="1HZ75V">Volatility 75 (1s) Index</option>
+            <option value="1HZ100V">Volatility 100 (1s) Index</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="card">
+        <h3>Trade Setup</h3>
+        <label>Contract Type</label>
+        <select id="contractType">
+          <option value="CALLPUT">Rise / Fall (CALL / PUT)</option>
+          <option value="DIGIT">Digit Even / Odd</option>
+        </select>
+        <div class="row2">
+          <div>
+            <label>Stake</label>
+            <input type="number" id="stake" value="1" min="0.35" step="0.01">
+          </div>
+          <div>
+            <label>Currency</label>
+            <input type="text" id="currency" value="USD" disabled>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Duration</label>
+            <input type="number" id="duration" value="5" min="1">
+          </div>
+          <div>
+            <label>Unit</label>
+            <select id="durationUnit">
+              <option value="t">Ticks</option>
+              <option value="s">Seconds</option>
+              <option value="m">Minutes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="trade-grid">
+          <button class="btn btn-buy" id="buyUpBtn" disabled>Buy Rise / Even</button>
+          <button class="btn btn-sell" id="buyDownBtn" disabled>Buy Fall / Odd</button>
+        </div>
+
+        <div class="toggle-row">
+          <span>Auto-trade on signal</span>
+          <label class="switch">
+            <input type="checkbox" id="autoTrade">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="hint">When enabled, the bot places a trade automatically whenever the signal engine flips to BUY or SELL and no position is open, respecting a cooldown between trades.</div>
+      </div>
+
+      <div class="card">
+        <h3>Session Log</h3>
+        <div class="log" id="logBox"><div>Waiting for connection…</div></div>
+      </div>
+
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <div class="price-panel">
+        <div class="price-main">
+          <div class="price-top">
+            <div>
+              <div class="symbol-name" id="symName">Volatility 50 Index</div>
+              <div class="symbol-sub" id="symCode">R_50 · SYNTHETIC INDEX</div>
+            </div>
+          </div>
+          <div class="price-value" id="priceVal">—</div>
+          <canvas id="spark"></canvas>
+        </div>
+
+        <div class="signal-box">
+          <div class="signal-badge HOLD" id="signalBadge">HOLD</div>
+          <div class="sig-metrics">
+            <div><span class="k">SMA 5</span><span class="v" id="sma5">—</span></div>
+            <div><span class="k">SMA 20</span><span class="v" id="sma20">—</span></div>
+            <div><span class="k">RSI 14</span><span class="v" id="rsi">—</span></div>
+            <div><span class="k">Confidence</span><span class="v" id="confidence">—</span></div>
+          </div>
+          <div class="sig-note">
+            Heuristic signal only: SMA(5/20) crossover for trend direction, confirmed or dampened by RSI(14) overbought/oversold. Not financial advice — use it as one input among many.
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3>Open Positions</h3>
+        <table>
+          <thead><tr><th>Contract</th><th>Type</th><th>Stake</th><th>Entry</th><th>Current</th><th>P/L</th><th>Status</th></tr></thead>
+          <tbody id="openBody"></tbody>
+        </table>
+        <div class="empty" id="openEmpty">No open positions</div>
+      </div>
+
+      <div class="table-card">
+        <h3>Trade History</h3>
+        <table>
+          <thead><tr><th>Time</th><th>Symbol</th><th>Type</th><th>Stake</th><th>Payout</th><th>P/L</th><th>Result</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+        <div class="empty" id="histEmpty">No trades yet</div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    Uses the official Deriv WebSocket API (<b>wss://ws.derivws.com/websockets/v3</b>) with your App ID and a Personal Access Token you paste in — no OAuth redirect. Nothing here is investment advice; volatility indices and options are leveraged, high-risk instruments. Verify your App ID at <b>api.deriv.com/dashboard</b> if the connection fails.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- state ----------------
+  let ws = null;
+  let authorized = false;
+  let reqId = 1;
+  const pending = {}; // req_id -> {resolve, reject}
+  const prices = [];  // rolling price history
+  const MAX_HIST = 120;
+  let lastPrice = null, prevPrice = null;
+  let currentSymbol = document.getElementById('symbolSelect').value;
+  let openContracts = {}; // contract_id -> row data
+  let lastTradeTime = 0;
+  const COOLDOWN_MS = 15000;
+  let lastSignal = 'HOLD';
+  let symbolSubId = null;
+  let balance = null, currency = 'USD', loginid = null, scopes = [];
+
+  const $ = id => document.getElementById(id);
+
+  function log(msg, cls){
+    const box = $('logBox');
+    const d = document.createElement('div');
+    if(cls) d.className = cls;
+    const t = new Date().toLocaleTimeString();
+    d.textContent = `[${t}] ${msg}`;
+    box.prepend(d);
+    while(box.children.length > 60) box.removeChild(box.lastChild);
+  }
+
+  function setConn(state){
+    const dot = $('connDot'), text = $('connText');
+    dot.className = 'dot' + (state==='live' ? ' live' : state==='err' ? ' err' : '');
+    text.textContent = state==='live' ? 'LIVE' : state==='err' ? 'ERROR' : 'OFFLINE';
+  }
+
+  // ---------------- websocket plumbing ----------------
+  function send(payload){
+    return new Promise((resolve, reject) => {
+      if(!ws || ws.readyState !== 1){ reject(new Error('Not connected')); return; }
+      const id = reqId++;
+      payload.req_id = id;
+      pending[id] = { resolve, reject };
+      ws.send(JSON.stringify(payload));
+    });
+  }
+
+  function connect(){
+    const appId = $('appId').value.trim() || '1089';
+    const token = $('token').value.trim();
+    if(!token){ log('Please paste an API token first.', 'e'); return; }
+
+    setConn('connecting');
+    $('connectBtn').disabled = true;
+
+    try{
+      ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`);
+    }catch(e){
+      log('Failed to open socket: ' + e.message, 'e');
+      setConn('err'); $('connectBtn').disabled = false;
+      return;
+    }
+
+    ws.onopen = async () => {
+      log('WebSocket connected. Authorizing…');
+      try{
+        const res = await send({ authorize: token });
+        if(res.error){ throw new Error(res.error.message); }
+        authorized = true;
+        const a = res.authorize;
+        loginid = a.loginid; currency = a.currency; scopes = a.scopes || [];
+        $('currency').value = currency;
+        $('acctInfo').innerHTML = `<b>${loginid}</b> &nbsp;·&nbsp; ${a.is_virtual ? 'DEMO' : 'REAL'} &nbsp;·&nbsp; ${currency}`;
+        setConn('live');
+        log(`Authorized as ${loginid} (${a.is_virtual ? 'demo' : 'real'} account). Scopes: ${scopes.join(', ') || 'none'}`, 's');
+        if(!scopes.includes('trade')){
+          log('Warning: token has no "trade" scope — trading calls will be rejected. Reissue the token with Trade enabled.', 'e');
+        }
+        $('disconnectBtn').style.display = 'block';
+        $('connectBtn').style.display = 'none';
+        $('buyUpBtn').disabled = false;
+        $('buyDownBtn').disabled = false;
+
+        // balance
+        send({ balance: 1, subscribe: 1 }).then(r => {
+          if(r.balance){ balance = r.balance.balance; renderAcct(); }
+        }).catch(()=>{});
+
+        subscribeSymbol(currentSymbol);
+      }catch(e){
+        log('Authorization failed: ' + e.message, 'e');
+        setConn('err');
+        $('connectBtn').disabled = false;
+        ws.close();
+      }
+    };
+
+    ws.onmessage = (evt) => {
+      let data;
+      try{ data = JSON.parse(evt.data); }catch(e){ return; }
+
+      if(data.req_id && pending[data.req_id]){
+        pending[data.req_id].resolve(data);
+        delete pending[data.req_id];
+      }
+
+      if(data.error){
+        log('API error: ' + data.error.message, 'e');
+      }
+
+      switch(data.msg_type){
+        case 'tick': handleTick(data.tick); break;
+        case 'balance': if(data.balance){ balance = data.balance.balance; renderAcct(); } break;
+        case 'proposal_open_contract': handleOpenContract(data.proposal_open_contract); break;
+      }
+    };
+
+    ws.onerror = () => { log('WebSocket error.', 'e'); setConn('err'); };
+
+    ws.onclose = () => {
+      log('Disconnected.');
+      setConn('offline');
+      authorized = false;
+      $('connectBtn').disabled = false;
+      $('connectBtn').style.display = 'block';
+      $('disconnectBtn').style.display = 'none';
+      $('buyUpBtn').disabled = true;
+      $('buyDownBtn').disabled = true;
+    };
+  }
+
+  function disconnect(){
+    if(ws){ ws.close(); }
+  }
+
+  function renderAcct(){
+    if(loginid){
+      $('acctInfo').innerHTML = `<b>${loginid}</b> &nbsp;·&nbsp; Bal: <b>${Number(balance).toFixed(2)} ${currency}</b>`;
+    }
+  }
+
+  // ---------------- market data / signal engine ----------------
+  function subscribeSymbol(symbol){
+    prices.length = 0;
+    lastPrice = null; prevPrice = null;
+    const opt = document.querySelector(`#symbolSelect option[value="${symbol}"]`);
+    $('symName').textContent = opt ? opt.textContent : symbol;
+    $('symCode').textContent = symbol + ' · SYNTHETIC INDEX';
+    if(!authorized) return;
+    send({ ticks: symbol, subscribe: 1 }).catch(e => log('Tick subscribe failed: ' + e.message, 'e'));
+  }
+
+  function handleTick(tick){
+    if(tick.symbol !== currentSymbol) return;
+    prevPrice = lastPrice;
+    lastPrice = parseFloat(tick.quote);
+    prices.push(lastPrice);
+    if(prices.length > MAX_HIST) prices.shift();
+
+    const pv = $('priceVal');
+    pv.textContent = lastPrice.toFixed(tick.pip_size || 4);
+    pv.className = 'price-value' + (prevPrice != null ? (lastPrice >= prevPrice ? ' up' : ' down') : '');
+
+    drawSpark();
+    computeSignal();
+  }
+
+  function sma(period){
+    if(prices.length < period) return null;
+    const slice = prices.slice(-period);
+    return slice.reduce((a,b)=>a+b,0) / period;
+  }
+
+  function rsi(period){
+    if(prices.length < period+1) return null;
+    const slice = prices.slice(-(period+1));
+    let gains=0, losses=0;
+    for(let i=1;i<slice.length;i++){
+      const diff = slice[i]-slice[i-1];
+      if(diff>=0) gains+=diff; else losses-=diff;
+    }
+    if(losses===0) return 100;
+    const rs = (gains/period)/(losses/period);
+    return 100 - (100/(1+rs));
+  }
+
+  function computeSignal(){
+    const s5 = sma(5), s20 = sma(20), r = rsi(14);
+    $('sma5').textContent = s5 ? s5.toFixed(4) : '—';
+    $('sma20').textContent = s20 ? s20.toFixed(4) : '—';
+    $('rsi').textContent = r ? r.toFixed(1) : '—';
+
+    if(s5==null || s20==null || r==null){
+      $('confidence').textContent = '—';
+      return;
+    }
+
+    let signal = 'HOLD', confidence = 0;
+    const trendUp = s5 > s20;
+    const spread = Math.abs(s5-s20) / s20 * 100;
+
+    if(trendUp && r < 70){
+      signal = 'BUY'; confidence = Math.min(95, 40 + spread*400 + (50-Math.min(r,50)));
+    } else if(!trendUp && r > 30){
+      signal = 'SELL'; confidence = Math.min(95, 40 + spread*400 + (Math.max(r,50)-50));
+    } else {
+      signal = 'HOLD'; confidence = 20;
+    }
+
+    const badge = $('signalBadge');
+    badge.textContent = signal;
+    badge.className = 'signal-badge ' + signal;
+    $('confidence').textContent = Math.round(confidence) + '%';
+
+    if(signal !== lastSignal && signal !== 'HOLD'){
+      log(`Signal flipped to ${signal} (confidence ${Math.round(confidence)}%)`, signal==='BUY'?'s':'e');
+    }
+    lastSignal = signal;
+
+    maybeAutoTrade(signal);
+  }
+
+  function drawSpark(){
+    const canvas = $('spark');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if(canvas.width !== w) canvas.width = w;
+    if(canvas.height !== h) canvas.height = h;
+    ctx.clearRect(0,0,w,h);
+    if(prices.length < 2) return;
+
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const range = (max-min) || 1;
+    const step = w / (MAX_HIST-1);
+    const offset = MAX_HIST - prices.length;
+
+    ctx.beginPath();
+    prices.forEach((p,i)=>{
+      const x = (offset+i)*step;
+      const y = h - ((p-min)/range)*h*0.85 - h*0.075;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    const up = prices[prices.length-1] >= prices[0];
+    ctx.strokeStyle = up ? '#00D9A3' : '#FF4D6D';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // fill
+    ctx.lineTo((offset+prices.length-1)*step, h);
+    ctx.lineTo(offset*step, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0, up ? 'rgba(0,217,163,.18)' : 'rgba(255,77,109,.18)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  // ---------------- trading ----------------
+  async function placeTrade(direction){
+    // direction: 'up' -> CALL / DIGITEVEN, 'down' -> PUT / DIGITODD
+    if(!authorized){ log('Connect first.', 'e'); return; }
+    const type = $('contractType').value;
+    const stake = parseFloat($('stake').value);
+    const duration = parseInt($('duration').value, 10);
+    const unit = $('durationUnit').value;
+
+    let contract_type;
+    if(type === 'CALLPUT') contract_type = direction === 'up' ? 'CALL' : 'PUT';
+    else contract_type = direction === 'up' ? 'DIGITEVEN' : 'DIGITODD';
+
+    const proposalReq = {
+      proposal: 1,
+      amount: stake,
+      basis: 'stake',
+      contract_type,
+      currency,
+      duration,
+      duration_unit: unit,
+      symbol: currentSymbol
+    };
+
+    log(`Requesting proposal: ${contract_type} ${currentSymbol} stake ${stake} ${currency}, ${duration}${unit}`);
+    let propRes;
+    try{
+      propRes = await send(proposalReq);
+      if(propRes.error) throw new Error(propRes.error.message);
+    }catch(e){
+      log('Proposal failed: ' + e.message, 'e');
+      return;
+    }
+
+    const proposal = propRes.proposal;
+    try{
+      const buyRes = await send({ buy: proposal.id, price: proposal.ask_price });
+      if(buyRes.error) throw new Error(buyRes.error.message);
+      const buy = buyRes.buy;
+      lastTradeTime = Date.now();
+      log(`Bought contract ${buy.contract_id} for ${proposal.ask_price} ${currency} (payout ${buy.payout})`, 's');
+
+      openContracts[buy.contract_id] = {
+        contract_id: buy.contract_id,
+        type: contract_type,
+        stake: proposal.ask_price,
+        entry: lastPrice,
+        current: lastPrice,
+        payout: buy.payout,
+        symbol: currentSymbol,
+        status: 'open'
+      };
+      renderOpen();
+
+      send({ proposal_open_contract: 1, contract_id: buy.contract_id, subscribe: 1 }).catch(()=>{});
+    }catch(e){
+      log('Buy failed: ' + e.message, 'e');
+    }
+  }
+
+  function maybeAutoTrade(signal){
+    if(!$('autoTrade').checked) return;
+    if(signal === 'HOLD') return;
+    if(Object.keys(openContracts).length > 0) return; // one at a time
+    if(Date.now() - lastTradeTime < COOLDOWN_MS) return;
+    placeTrade(signal === 'BUY' ? 'up' : 'down');
+  }
+
+  function handleOpenContract(poc){
+    const row = openContracts[poc.contract_id];
+    if(!row) return;
+    row.current = poc.current_spot != null ? poc.current_spot : row.current;
+    row.pl = poc.profit;
+    row.status = poc.is_expired ? 'expired' : poc.is_sold ? 'sold' : 'open';
+
+    if(poc.is_sold){
+      addHistory({
+        time: new Date().toLocaleTimeString(),
+        symbol: row.symbol,
+        type: row.type,
+        stake: row.stake,
+        payout: poc.sell_price != null ? poc.sell_price : row.payout,
+        pl: poc.profit,
+        result: poc.profit >= 0 ? 'WIN' : 'LOSS'
+      });
+      delete openContracts[poc.contract_id];
+      log(`Contract ${poc.contract_id} settled: ${poc.profit >= 0 ? 'WIN' : 'LOSS'} (${Number(poc.profit).toFixed(2)} ${currency})`, poc.profit>=0?'s':'e');
+    }
+    renderOpen();
+  }
+
+  function renderOpen(){
+    const body = $('openBody'), empty = $('openEmpty');
+    const rows = Object.values(openContracts);
+    if(rows.length === 0){ body.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display = 'none';
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.contract_id}</td>
+        <td><span class="tag ${r.type}">${r.type}</span></td>
+        <td>${Number(r.stake).toFixed(2)}</td>
+        <td>${r.entry != null ? Number(r.entry).toFixed(4) : '—'}</td>
+        <td>${r.current != null ? Number(r.current).toFixed(4) : '—'}</td>
+        <td class="${r.pl>=0?'pl-pos':'pl-neg'}">${r.pl != null ? Number(r.pl).toFixed(2) : '—'}</td>
+        <td>${r.status}</td>
+      </tr>
+    `).join('');
+  }
+
+  const history = [];
+  function addHistory(entry){
+    history.unshift(entry);
+    const body = $('histBody'), empty = $('histEmpty');
+    empty.style.display = 'none';
+    body.innerHTML = history.slice(0,50).map(h => `
+      <tr>
+        <td>${h.time}</td>
+        <td>${h.symbol}</td>
+        <td><span class="tag ${h.type}">${h.type}</span></td>
+        <td>${Number(h.stake).toFixed(2)}</td>
+        <td>${Number(h.payout).toFixed(2)}</td>
+        <td class="${h.pl>=0?'pl-pos':'pl-neg'}">${Number(h.pl).toFixed(2)}</td>
+        <td>${h.result}</td>
+      </tr>
+    `).join('');
+  }
+
+  // ---------------- events ----------------
+  $('connectBtn').addEventListener('click', connect);
+  $('disconnectBtn').addEventListener('click', disconnect);
+  $('buyUpBtn').addEventListener('click', () => placeTrade('up'));
+  $('buyDownBtn').addEventListener('click', () => placeTrade('down'));
+  $('symbolSelect').addEventListener('change', (e) => {
+    currentSymbol = e.target.value;
+    subscribeSymbol(currentSymbol);
+  });
+  $('contractType').addEventListener('change', (e) => {
+    const isDigit = e.target.value === 'DIGIT';
+    $('buyUpBtn').textContent = isDigit ? 'Buy Even' : 'Buy Rise';
+    $('buyDownBtn').textContent = isDigit ? 'Buy Odd' : 'Buy Fall';
+    if(isDigit){
+      $('durationUnit').value = 't';
+    }
+  });
+
+  window.addEventListener('resize', drawSpark);
+  setConn('offline');
+})();
+</script>
+</body>
+</html>
